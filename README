@@ -4,6 +4,21 @@ Group Members: Michael Elliott, Clayton Fields, Jackson Edwards
 
 ----------------------------------------------------------------------------------
 
+Introduction
+
+----------------------------------------------------------------------------------
+    
+    This project consists of two programs, GeneBankCreateBTree.java and 
+    GeneBankSearch.java. GeneBankCreateBTree parses a given human genome gene bank 
+    file (.gbk) into different sequences (via a user given sequence length) and 
+    stores the sequences and the number of duplicates of that sequence into a 
+    binary balanced tree file. GeneBankSearch is used to compare the newly created 
+    BTree file to different possible permutations of the DNA sequence's for that 
+    specific sequence length. I included the assignment specifications (lab4.pdf) 
+    in the repo to walk through more of the details if the reader is interested.
+
+----------------------------------------------------------------------------------
+
 Cache
 
 ----------------------------------------------------------------------------------
