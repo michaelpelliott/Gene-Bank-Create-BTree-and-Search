@@ -1,0 +1,149 @@
+CS 321, Spring 2020, Lab 4
+
+Group Members: Michael Elliott, Clayton Fields, Jackson Edwards
+
+----------------------------------------------------------------------------------
+
+Cache
+
+----------------------------------------------------------------------------------
+
+    Our implementation of this program includes the cache implementation. 
+        - Unfortunately our cache implementation did not materially improve the 
+          speed of our program and in some cases slowed it down. This is probably 
+          because while our implementation did reduce the number of diskReads, it 
+          did not significantly reduce the number of diskWrites.  With additional 
+          time we may have been able to find an effective solution, but time ran 
+          out. Given more time, we would have tried to modify our split child 
+          method to return a node so we could reduce the number of writes. 
+          
+          We timed our program using the bash command 'time' and these were the 
+          results using test3.gbk and a sequence length 6:
+          Without cache:
+          	real	0m1.808s
+			user	0m2.397s
+			sys		0m1.006s
+          	
+          With cache size 100:
+			real	0m1.837s
+			user	0m2.749s
+			sys	0m1.039s
+			
+		  With cache size 500:
+		  	real	0m2.511s
+			user	0m3.222s
+			sys	0m1.285s
+
+----------------------------------------------------------------------------------
+
+Design Choices
+
+----------------------------------------------------------------------------------
+
+    Calculating the optimal degree:
+
+        Our design calculated the optimal degree of a gene bank BTree node to be
+    t = 127. Our BTreeNodes must contain:
+
+    -   N, The number of keys stored in the node, an integer, 4 bytes.
+    -   leaf, A boolean that tells whether or not this node is a leaf node, 
+        converted to 1 byte for storage purposes.
+    -   degree, The degree of the node and tree, an integer, 4 bytes. 
+    -   location, The integer byte offset of this node in the BTree file, 
+        4 bytes.
+    -   parent, The integer byte offset of this nodes parent in the BTree
+        file, 4 bytes.
+    -   byteTotal, The total number of bytes that this node actually occupies
+        in the file. This is used with read and write operations to 
+        discern the total number of bytes to read in, and how many filler
+        bytes to write after the actual BTreeNode so we can read/write the
+        same amount of bytes every read or write operation.
+        An integer, 4 bytes.
+    -   number of child pointer in the children list, an integer, 4 bytes.
+
+    This adds up to 25 bytes of metadata required for each BTree node.
+
+    Each TreeObject is just made up of its key value, a long, 8 bytes, 
+    and its frequency, an integer, 4 bytes, for a total of 12 bytes per 
+    TreeObject in the objects list in each BTree node. For the maximal
+    case we have 2t - 1 TreeObjects in our node's objects list.
+
+    Each child in the children list is just an integer pointer, 4 bytes,
+    so we have a maximum of 2t integers in a BTree node.
+
+    The defined ideal block size is 4096 bytes so we set up our equation as:
+
+    4096 bytes = (2t - 1)*12 bytes + 2t*4 bytes + 25 bytes
+
+    Solving for t we find:      t = 127.59.....
+
+    Because we are interested in the maximal degree, and the degree must be
+    an integer, we use the floor of t, and our maximal degree is:
+
+    t = 127
+
+    ***********************************************************************
+
+    Node layout in file:
+
+        The first node entered into a BTree will be written to the start of
+    the file. Each node will be written as its maximal size (in bytes) for 
+    the specific degree of that node/tree regardless of how big that node 
+    is at the time of writing. We write the BTree node information in bytes
+    in a specific order so it can be retrieved into the appropriate data 
+    types and assigned to the appropriate attributes of the node and 
+    TreeObjects. We calculate the maximal size of each node (in bytes) 
+    using the following function of the degree of the node:
+
+        MaxBytes = (2t - 1)*12 bytes + 2t*4 bytes + 25 bytes
+
+        where each TreeObject is 12 bytes, each child pointer is 4 bytes 
+        and each node has 25 bytes of metadata.
+
+    Each successive node that is created is written to a position 
+    incremented by the MaxBytes function. To simplify the writing of the
+    node locations as they're created, we decided that instead of writing
+    the BTree meta data to the head of the file, we would write it to the 
+    end of the BTree file as a footer.
+
+        The BTree metadata consists of:
+            -   root location: The integer byte offset of the root in the
+                BTree file. Used to immediately access the root of the 
+                BTree. An integer, 4 bytes.
+            -   degree: The degree of the BTree itself. Integer, 4 bytes.
+            -   sequence length: The length of the DNA sequence that is 
+                stored in the BTree. An integer, 4 bytes.
+
+    Each BTree file contains the above 12 byte footer, which is added to 
+    the file as the last thing the GeneBankCreateBTree.java file does.
+
+--------------------------------------------------------------------------------
+
+Usage
+
+--------------------------------------------------------------------------------
+
+    javac GeneBankCreateBTree.java
+    java GeneBankCreateBTree <0/1(no/with Cache)> <degree of BTree> + 
+        <.gbk file to parse> <sequence length of dna> [<cache size to use>] + 
+        [<debug level>]
+
+    Degree: Input is valid for values greater than equal to zero, but not equal 
+        to one. If zero, the program selects the optimal degree based upon the 
+        assumed size of a memory block being 4096 bytes.
+    
+    Sequence Length: Input is valid for values greater than or equal to one.
+    
+    Debug Level: Valid inputs are zero or one, with one making a dump file and
+        zero printing output to the console.
+
+    javac GeneBankSearch.java
+    java GeneBankSearch <0/1(no/with Cache)> <BTree Filename> <Query Filename> +
+        [<cache size>] [<debug level>]
+
+    The BTree file and Query file must have the same sequence length in order 
+        to be comparable.
+
+    Debug Level: Valid inputs are zero or one, with one making a dump file 
+        and zero printing output to the console.
+
